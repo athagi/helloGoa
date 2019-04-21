@@ -11,6 +11,7 @@ import (
 
 	calc "github.com/athagi/helloGoa/gen/calc"
 	calcsvr "github.com/athagi/helloGoa/gen/http/calc/server"
+	openapisvr "github.com/athagi/helloGoa/gen/http/openapi/server"
 	goahttp "goa.design/goa/http"
 	httpmdlwr "goa.design/goa/http/middleware"
 	"goa.design/goa/middleware"
@@ -49,14 +50,17 @@ func handleHTTPServer(ctx context.Context, u *url.URL, calcEndpoints *calc.Endpo
 	// the service input and output data structures to HTTP requests and
 	// responses.
 	var (
-		calcServer *calcsvr.Server
+		calcServer    *calcsvr.Server
+		openapiServer *openapisvr.Server
 	)
 	{
 		eh := errorHandler(logger)
 		calcServer = calcsvr.New(calcEndpoints, mux, dec, enc, eh)
+		openapiServer = openapisvr.New(nil, mux, dec, enc, eh)
 	}
 	// Configure the mux.
 	calcsvr.Mount(mux, calcServer)
+	openapisvr.Mount(mux)
 
 	// Wrap the multiplexer with additional middlewares. Middlewares mounted
 	// here apply to all the service endpoints.
@@ -73,6 +77,9 @@ func handleHTTPServer(ctx context.Context, u *url.URL, calcEndpoints *calc.Endpo
 	// configure the server as required by your service.
 	srv := &http.Server{Addr: u.Host, Handler: handler}
 	for _, m := range calcServer.Mounts {
+		logger.Printf("HTTP %q mounted on %s %s", m.Method, m.Verb, m.Pattern)
+	}
+	for _, m := range openapiServer.Mounts {
 		logger.Printf("HTTP %q mounted on %s %s", m.Method, m.Verb, m.Pattern)
 	}
 
